@@ -1,0 +1,46 @@
+Names Default To Here(1);
+Include("dt_store.jsl");
+
+SPCGetCurrentUser = Function({},
+	uname = Get Environment Variable("USERNAME");
+	If(Is Missing(uname) | uname == "", uname = Get Environment Variable("USER"));
+	If(Is Missing(uname) | uname == "", uname = "unknown");
+	Return(uname);
+);
+
+SPCGetUserRecord = Function({username},
+	localPath = SPCDataPath("USERS.jmp");
+	dt = Open(localPath, Private);
+	row = Loc(Column(dt, "username"), username);
+	If(N Items(row) == 0,
+		Close(dt, No Save);
+		Return({"role" = "VIEWER", "line_scope" = ""});
+	);
+	role = Column(dt, "role")[row[1]];
+	lineScope = Column(dt, "line_scope")[row[1]];
+	Close(dt, No Save);
+	Return({"role" = role, "line_scope" = lineScope});
+);
+
+SPCUserHasRole = Function({requiredRole},
+	user = SPCGetCurrentUser();
+	info = SPCGetUserRecord(user);
+	role = info["role"];
+	roles = {"VIEWER", "ENGINEER", "CONFIG_EDITOR", "APPROVER", "ADMIN"};
+	Return(Contains(roles, role) >= Contains(roles, requiredRole));
+);
+
+SPCRequireRole = Function({requiredRole},
+	If(!SPCUserHasRole(requiredRole),
+		Throw("Permission denied: requires " || requiredRole)
+	);
+);
+
+SPCAllowAction = Function({action},
+	If(action == "VIEW", Return(SPCUserHasRole("VIEWER")));
+	If(action == "ACK", Return(SPCUserHasRole("ENGINEER")));
+	If(action == "EDIT_CONFIG", Return(SPCUserHasRole("CONFIG_EDITOR")));
+	If(action == "APPROVE_CONFIG", Return(SPCUserHasRole("APPROVER")));
+	If(action == "ADMIN", Return(SPCUserHasRole("ADMIN")));
+	Return(0);
+);

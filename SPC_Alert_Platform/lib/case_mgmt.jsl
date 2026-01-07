@@ -1,0 +1,25 @@
+Names Default To Here(1);
+Include("dt_store.jsl");
+Include("rbac.jsl");
+
+SPCAckAlert = Function({alertId},
+	SPCRequireRole("ENGINEER");
+	alertsPath = SPCDataPath("ALERTS.jmp");
+	alerts = Open(alertsPath, Private);
+	row = Loc(Column(alerts, "alert_id"), alertId);
+	If(N Items(row) == 0, Throw("Alert not found"));
+	Column(alerts, "status")[row[1]] = "ACK";
+	Column(alerts, "updated_at")[row[1]] = Now();
+	alerts << Save(alertsPath);
+	Close(alerts, No Save);
+);
+
+SPCShowCaseCenter = Function({},
+	alerts = Open(SPCDataPath("ALERTS.jmp"), Private);
+	New Window("告警&闭环中心",
+		V List Box(
+			Text Box("当前告警列表"),
+			Table Box(alerts)
+		)
+	);
+);

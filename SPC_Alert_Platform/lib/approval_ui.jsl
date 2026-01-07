@@ -1,0 +1,14 @@
+Names Default To Here(1);
+Include("dt_store.jsl");
+Include("rbac.jsl");
+
+SPCShowApprovalCenter = Function({},
+	SPCRequireRole("APPROVER");
+	draft = Open(SPCDataPath("CONFIG_DRAFT.jmp"), Private);
+	New Window("审批中心",
+		V List Box(
+			Text Box("待审批草稿"),
+			Table Box(draft)
+		)
+	);
+);

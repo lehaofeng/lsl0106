@@ -1,0 +1,44 @@
+Names Default To Here(1);
+
+SPCDefaultRuleParams = Function({},
+	Return({
+		"N1" = {"enabled" = 1, "sigma" = 3, "run_length" = 1, "severity" = "L3"},
+		"N2" = {"enabled" = 1, "sigma" = 0, "run_length" = 9, "severity" = "L2"},
+		"WE1" = {"enabled" = 1, "sigma" = 3, "run_length" = 1, "severity" = "L3"},
+		"WE2" = {"enabled" = 1, "sigma" = 2, "run_length" = 3, "severity" = "L2"},
+		"WE3" = {"enabled" = 1, "sigma" = 1, "run_length" = 5, "severity" = "L2"},
+		"WE4" = {"enabled" = 1, "sigma" = 0, "run_length" = 8, "severity" = "L1"}
+	});
+);
+
+SPCEvaluateRules = Function({values, cl, ucl, lcl, ruleParams},
+	violations = {};
+	sigma = (ucl - cl) / 3;
+	If(sigma <= 0, Return(violations));
+
+	n = N Items(values);
+	For(i = 1, i <= n, i++,
+		val = values[i];
+		If(ruleParams["N1"]["enabled"] & (val > cl + 3 * sigma | val < cl - 3 * sigma),
+			violations[Insert Into(violations, N Items(violations) + 1)] = {"rule" = "N1", "index" = i, "severity" = ruleParams["N1"]["severity"]};
+		);
+		If(ruleParams["WE1"]["enabled"] & (val > cl + 3 * sigma | val < cl - 3 * sigma),
+			violations[Insert Into(violations, N Items(violations) + 1)] = {"rule" = "WE1", "index" = i, "severity" = ruleParams["WE1"]["severity"]};
+		);
+	);
+
+	If(ruleParams["N2"]["enabled"],
+		run = ruleParams["N2"]["run_length"];
+		If(n >= run,
+			For(i = run, i <= n, i++,
+				segment = values[i-run+1 :: i];
+				above = N Items(Loc(segment, _col > cl));
+				below = N Items(Loc(segment, _col < cl));
+				If(above == run | below == run,
+					violations[Insert Into(violations, N Items(violations) + 1)] = {"rule" = "N2", "index" = i, "severity" = ruleParams["N2"]["severity"]};
+				);
+			);
+		);
+	);
+	Return(violations);
+);

@@ -1,0 +1,24 @@
+Names Default To Here(1);
+
+SPCGenerateSampleMeasurements = Function({rows=200},
+	dt = New Table("spc_measurements",
+		Add Rows(rows),
+		New Column("ts", Numeric, "Continuous"),
+		New Column("line", Character, "Nominal"),
+		New Column("machine", Character, "Nominal"),
+		New Column("variable", Character, "Nominal"),
+		New Column("value", Numeric, "Continuous"),
+		New Column("subgroup_id", Character, "Nominal"),
+		New Column("subgroup_index", Numeric, "Continuous")
+	);
+	For(i = 1, i <= rows, i++,
+		Column(dt, "ts")[i] = Now() - (rows - i) / 1440;
+		Column(dt, "line")[i] = "L1";
+		Column(dt, "machine")[i] = "M" || Char(Ceil(i / 50));
+		Column(dt, "variable")[i] = "TEMP";
+		Column(dt, "value")[i] = 100 + Random Normal(0, 2);
+		Column(dt, "subgroup_id")[i] = "S" || Char(Ceil(i / 5));
+		Column(dt, "subgroup_index")[i] = Mod(i, 5) + 1;
+	);
+	Return(dt);
+);

@@ -1,0 +1,26 @@
+Names Default To Here(1);
+Include("db.jsl");
+Include("spc_charts.jsl");
+Include("spc_rules.jsl");
+Include("alert_engine.jsl");
+Include("dt_store.jsl");
+
+SPCMonitorOnce = Function({},
+	connTable = Open(SPCDataPath("DB_CONN.jmp"), Private);
+	connNames = Column(connTable, "conn_name") << Get Values;
+	Close(connTable, No Save);
+	For(i = 1, i <= N Items(connNames), i++,
+		Try(
+			dt = SPCFetchIncremental(connNames[i]);
+			If(Is Empty(dt), Continue());
+			stats = SPCComputeChartStats(dt, "IMR", 1);
+			rules = SPCDefaultRuleParams();
+			violations = SPCEvaluateRules(stats["values"], stats["cl"], stats["ucl"], stats["lcl"], rules);
+			For Each(violations, v,
+				SPCRegisterAlert(dt, v, stats);
+			);
+		,
+			Show("Monitor tick failed: " || Char(Exception Message()));
+		);
+	);
+);

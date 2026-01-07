@@ -1,0 +1,18 @@
+Names Default To Here(1);
+Include("config_repo.jsl");
+
+SPCSubmitForApproval = Function({configId},
+	SPCSubmitDraft(configId);
+);
+
+SPCApproveConfig = Function({configId, comment=""},
+	SPCApproveDraft(configId, 1, comment);
+);
+
+SPCRejectConfig = Function({configId, comment=""},
+	SPCApproveDraft(configId, 0, comment);
+);
+
+SPCApplyConfig = Function({configId},
+	SPCApplyApprovedDraft(configId);
+);

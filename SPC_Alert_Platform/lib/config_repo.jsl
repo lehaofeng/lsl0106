@@ -1,0 +1,123 @@
+Names Default To Here(1);
+Include("dt_store.jsl");
+Include("rbac.jsl");
+
+SPCNewId = Function({},
+	Return(Char(Today()) || "-" || Char(Tick()));
+);
+
+SPCAddAudit = Function({eventType, configId, versionId, diffSummary},
+	localPath = SPCDataPath("CONFIG_AUDIT.jmp");
+	dt = Open(localPath, Private);
+	dt << Add Rows(1);
+	row = N Rows(dt);
+	Column(dt, "event_id")[row] = SPCNewId();
+	Column(dt, "event_type")[row] = eventType;
+	Column(dt, "actor")[row] = SPCGetCurrentUser();
+	Column(dt, "ts")[row] = Now();
+	Column(dt, "config_id")[row] = configId;
+	Column(dt, "version_id")[row] = versionId;
+	Column(dt, "diff_summary")[row] = diffSummary;
+	dt << Save(localPath);
+	Close(dt, No Save);
+);
+
+SPCSaveDraft = Function({draftRow},
+	SPCRequireRole("CONFIG_EDITOR");
+	localPath = SPCDataPath("CONFIG_DRAFT.jmp");
+	dt = Open(localPath, Private);
+	dt << Add Rows(1);
+	row = N Rows(dt);
+	For Each Key(draftRow, key,
+		If(!Is Missing(Column(dt, key)),
+			Column(dt, key)[row] = draftRow[key];
+		);
+	);
+	Column(dt, "config_id")[row] = draftRow["config_id"];
+	Column(dt, "created_by")[row] = SPCGetCurrentUser();
+	Column(dt, "created_at")[row] = Now();
+	Column(dt, "status")[row] = "DRAFT";
+	dt << Save(localPath);
+	Close(dt, No Save);
+	SPCAddAudit("CREATE", draftRow["config_id"], "", "Draft created");
+);
+
+SPCSubmitDraft = Function({configId},
+	SPCRequireRole("CONFIG_EDITOR");
+	localPath = SPCDataPath("CONFIG_DRAFT.jmp");
+	dt = Open(localPath, Private);
+	row = Loc(Column(dt, "config_id"), configId);
+	If(N Items(row) == 0, Throw("Draft not found"));
+	Column(dt, "status")[row[1]] = "SUBMITTED";
+	Column(dt, "submit_at")[row[1]] = Now();
+	dt << Save(localPath);
+	Close(dt, No Save);
+	SPCAddAudit("SUBMIT", configId, "", "Draft submitted");
+);
+
+SPCApproveDraft = Function({configId, approve=1, comment=""},
+	SPCRequireRole("APPROVER");
+	localPath = SPCDataPath("CONFIG_DRAFT.jmp");
+	dt = Open(localPath, Private);
+	row = Loc(Column(dt, "config_id"), configId);
+	If(N Items(row) == 0, Throw("Draft not found"));
+	If(approve,
+		Column(dt, "status")[row[1]] = "APPROVED";
+		Column(dt, "approve_at")[row[1]] = Now();
+		Column(dt, "approve_by")[row[1]] = SPCGetCurrentUser();
+		SPCAddAudit("APPROVE", configId, "", comment);
+	,
+		Column(dt, "status")[row[1]] = "REJECTED";
+		SPCAddAudit("REJECT", configId, "", comment);
+	);
+	dt << Save(localPath);
+	Close(dt, No Save);
+);
+
+SPCApplyApprovedDraft = Function({configId},
+	SPCRequireRole("APPROVER");
+	draftPath = SPCDataPath("CONFIG_DRAFT.jmp");
+	activePath = SPCDataPath("CONFIG_ACTIVE.jmp");
+	draft = Open(draftPath, Private);
+	row = Loc(Column(draft, "config_id"), configId);
+	If(N Items(row) == 0, Throw("Draft not found"));
+	If(Column(draft, "status")[row[1]] != "APPROVED", Throw("Draft not approved"));
+
+	active = Open(activePath, Private);
+	active << Add Rows(1);
+	newRow = N Rows(active);
+	For Each Column(active, col,
+		colName = Column Name(col);
+		If(!Is Missing(Column(draft, colName)),
+			col[newRow] = Column(draft, colName)[row[1]];
+		);
+	);
+	Column(active, "version_id")[newRow] = SPCNewId();
+	Column(active, "status")[newRow] = "APPLIED";
+	Column(active, "applied_at")[newRow] = Now();
+	Column(active, "applied_by")[newRow] = SPCGetCurrentUser();
+	active << Save(activePath);
+	Close(active, No Save);
+	Close(draft, No Save);
+	SPCAddAudit("APPLY", configId, Column(active, "version_id")[newRow], "Draft applied");
+);
+
+SPCRollbackToVersion = Function({versionId},
+	SPCRequireRole("APPROVER");
+	activePath = SPCDataPath("CONFIG_ACTIVE.jmp");
+	active = Open(activePath, Private);
+	row = Loc(Column(active, "version_id"), versionId);
+	If(N Items(row) == 0, Throw("Version not found"));
+	active << Add Rows(1);
+	newRow = N Rows(active);
+	For Each Column(active, col,
+		colName = Column Name(col);
+		col[newRow] = col[row[1]];
+	);
+	Column(active, "version_id")[newRow] = SPCNewId();
+	Column(active, "applied_at")[newRow] = Now();
+	Column(active, "applied_by")[newRow] = SPCGetCurrentUser();
+	active << Save(activePath);
+	Close(active, No Save);
+	SPCAddAudit("ROLLBACK", Column(active, "config_id")[row[1]], Column(active, "version_id")[newRow], "Rollback applied");
+);

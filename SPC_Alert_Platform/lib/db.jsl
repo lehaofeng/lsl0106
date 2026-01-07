@@ -1,0 +1,65 @@
+Names Default To Here(1);
+Include("dt_store.jsl");
+
+SPCGetDbConnRow = Function({connName},
+	localPath = SPCDataPath("DB_CONN.jmp");
+	dt = Open(localPath, Private);
+	row = Loc(Column(dt, "conn_name"), connName);
+	If(N Items(row) == 0, Throw("DB connection not found"));
+	rowIndex = row[1];
+	connInfo = {
+		"conn_string" = Column(dt, "conn_string")[rowIndex],
+		"odbc_dsn" = Column(dt, "odbc_dsn")[rowIndex],
+		"username" = Column(dt, "username")[rowIndex],
+		"password" = Column(dt, "password")[rowIndex],
+		"query_template" = Column(dt, "query_template")[rowIndex],
+		"incremental_mode" = Column(dt, "incremental_mode")[rowIndex],
+		"watermark_value" = Column(dt, "watermark_value")[rowIndex],
+		"poll_seconds" = Column(dt, "poll_seconds")[rowIndex],
+		"is_active" = Column(dt, "is_active")[rowIndex]
+	};
+	Close(dt, No Save);
+	Return(connInfo);
+);
+
+SPCUpdateWatermark = Function({connName, newValue},
+	localPath = SPCDataPath("DB_CONN.jmp");
+	dt = Open(localPath, Private);
+	row = Loc(Column(dt, "conn_name"), connName);
+	If(N Items(row) == 0, Throw("DB connection not found"));
+	Column(dt, "watermark_value")[row[1]] = newValue;
+	dt << Save(localPath);
+	Close(dt, No Save);
+);
+
+SPCBuildIncrementalQuery = Function({template, watermark},
+	Return(Substitute(template, "{watermark}", watermark));
+);
+
+SPCFetchIncremental = Function({connName},
+	info = SPCGetDbConnRow(connName);
+	If(info["is_active"] != 1, Return(Empty()));
+	query = SPCBuildIncrementalQuery(info["query_template"], info["watermark_value"]);
+	retry = 0;
+	success = 0;
+	dataTable = Empty();
+	While(retry < 3 & !success,
+		retry++;
+		Try(
+			connString = info["conn_string"];
+			If(connString == "", connString = "DSN=" || info["odbc_dsn"] || ";");
+			db = Open Database(connString, info["username"], info["password"]);
+			dataTable = Execute SQL(db, query);
+			Close Database(db);
+			success = 1;
+		,
+			Show("DB fetch failed: " || Char(Exception Message()));
+		);
+	);
+	If(!success, Return(Empty()));
+	If(N Rows(dataTable) > 0,
+		maxTs = Column(dataTable, "ts") << Max;
+		SPCUpdateWatermark(connName, Char(maxTs));
+	);
+	Return(dataTable);
+);

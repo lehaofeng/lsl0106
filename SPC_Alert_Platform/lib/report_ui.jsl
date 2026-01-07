@@ -1,0 +1,12 @@
+Names Default To Here(1);
+Include("dt_store.jsl");
+
+SPCShowReportCenter = Function({},
+	kpi = Open(SPCDataPath("KPI_DAILY.jmp"), Private);
+	New Window("汇总报表",
+		V List Box(
+			Text Box("日汇总 KPI"),
+			Table Box(kpi)
+		)
+	);
+);
