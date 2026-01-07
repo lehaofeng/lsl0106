@@ -1,0 +1,286 @@
+Names Default To Here(1);
+
+SPC_BASE_DIR = Get Directory("JMP Home") || "SPC_Alert_Platform/";
+SPC_DATA_DIR = SPC_BASE_DIR || "data/";
+
+SPCEnsureDirectory = Function({dirPath},
+	If(!Directory Exists(dirPath),
+		Create Directory(dirPath)
+	);
+);
+
+SPCDataPath = Function({fileName},
+	SPCEnsureDirectory(SPC_BASE_DIR);
+	SPCEnsureDirectory(SPC_DATA_DIR);
+	SPC_DATA_DIR || fileName;
+);
+
+SPCEnsureColumn = Function({dt, colName, colType, colFormat},
+	If(Is Missing(Column(dt, colName)),
+		New Column(dt, colName, colType, colFormat)
+	);
+);
+
+SPCEnsureTable = Function({tableName, columns, rebuild=0},
+	localPath = SPCDataPath(tableName || ".jmp");
+	If(rebuild & File Exists(localPath),
+		Delete File(localPath)
+	);
+	If(File Exists(localPath),
+		dt = Open(localPath, Private);
+	,
+		dt = New Table(tableName, Invisible);
+	);
+	For(i = 1, i <= N Items(columns), i++,
+		colSpec = columns[i];
+		SPCEnsureColumn(dt, colSpec[1], colSpec[2], colSpec[3]);
+	);
+	If(Is Missing(Column(dt, "lock_flag")),
+		New Column(dt, "lock_flag", Numeric, "Continuous");
+		Column(dt, "lock_flag") << Set Property("Notes", "0=unlocked,1=locked");
+	);
+	dt << Save(localPath);
+	Close(dt, No Save);
+);
+
+SPCLockTable = Function({tableName},
+	localPath = SPCDataPath(tableName || ".jmp");
+	dt = Open(localPath, Private);
+	If(N Rows(dt) == 0,
+		dt << Add Rows(1);
+	);
+	If(Column(dt, "lock_flag")[1] == 1,
+		Throw("Table is locked: " || tableName)
+	);
+	Column(dt, "lock_flag")[1] = 1;
+	dt << Save(localPath);
+	Close(dt, No Save);
+);
+
+SPCUnlockTable = Function({tableName},
+	localPath = SPCDataPath(tableName || ".jmp");
+	If(!File Exists(localPath), Return());
+	dt = Open(localPath, Private);
+	If(N Rows(dt) == 0,
+		dt << Add Rows(1);
+	);
+	Column(dt, "lock_flag")[1] = 0;
+	dt << Save(localPath);
+	Close(dt, No Save);
+);
+
+SPCEnsureAllTables = Function({rebuild=0},
+	SPCEnsureTable("ORG", {
+		{"plant", Character, "Nominal"},
+		{"line", Character, "Nominal"},
+		{"machine", Character, "Nominal"},
+		{"machine_display_order", Numeric, "Continuous"},
+		{"is_active", Numeric, "Ordinal"}
+	}, rebuild);
+
+	SPCEnsureTable("USERS", {
+		{"username", Character, "Nominal"},
+		{"display_name", Character, "Nominal"},
+		{"email", Character, "Nominal"},
+		{"role", Character, "Nominal"},
+		{"line_scope", Character, "Nominal"}
+	}, rebuild);
+
+	SPCEnsureTable("CONFIG_DRAFT", {
+		{"config_id", Character, "Nominal"},
+		{"scope_line", Character, "Nominal"},
+		{"scope_machine", Character, "Nominal"},
+		{"scope_variable", Character, "Nominal"},
+		{"enable_monitoring", Numeric, "Ordinal"},
+		{"chart_type", Character, "Nominal"},
+		{"sampling_type", Character, "Nominal"},
+		{"subgroup_size", Numeric, "Continuous"},
+		{"usl", Numeric, "Continuous"},
+		{"lsl", Numeric, "Continuous"},
+		{"target", Numeric, "Continuous"},
+		{"control_limit_mode", Character, "Nominal"},
+		{"cl", Numeric, "Continuous"},
+		{"ucl", Numeric, "Continuous"},
+		{"lcl", Numeric, "Continuous"},
+		{"baseline_days", Numeric, "Continuous"},
+		{"baseline_points", Numeric, "Continuous"},
+		{"rule_set_id", Character, "Nominal"},
+		{"severity_map", Character, "Nominal"},
+		{"notification_profile_id", Character, "Nominal"},
+		{"effective_from", Numeric, "Continuous"},
+		{"created_by", Character, "Nominal"},
+		{"created_at", Numeric, "Continuous"},
+		{"status", Character, "Nominal"},
+		{"submit_at", Numeric, "Continuous"},
+		{"approve_at", Numeric, "Continuous"},
+		{"approve_by", Character, "Nominal"},
+		{"change_reason", Character, "Nominal"},
+		{"prev_config_version_id", Character, "Nominal"}
+	}, rebuild);
+
+	SPCEnsureTable("CONFIG_ACTIVE", {
+		{"config_id", Character, "Nominal"},
+		{"version_id", Character, "Nominal"},
+		{"scope_line", Character, "Nominal"},
+		{"scope_machine", Character, "Nominal"},
+		{"scope_variable", Character, "Nominal"},
+		{"enable_monitoring", Numeric, "Ordinal"},
+		{"chart_type", Character, "Nominal"},
+		{"sampling_type", Character, "Nominal"},
+		{"subgroup_size", Numeric, "Continuous"},
+		{"usl", Numeric, "Continuous"},
+		{"lsl", Numeric, "Continuous"},
+		{"target", Numeric, "Continuous"},
+		{"control_limit_mode", Character, "Nominal"},
+		{"cl", Numeric, "Continuous"},
+		{"ucl", Numeric, "Continuous"},
+		{"lcl", Numeric, "Continuous"},
+		{"baseline_days", Numeric, "Continuous"},
+		{"baseline_points", Numeric, "Continuous"},
+		{"rule_set_id", Character, "Nominal"},
+		{"severity_map", Character, "Nominal"},
+		{"notification_profile_id", Character, "Nominal"},
+		{"effective_from", Numeric, "Continuous"},
+		{"created_by", Character, "Nominal"},
+		{"created_at", Numeric, "Continuous"},
+		{"status", Character, "Nominal"},
+		{"applied_at", Numeric, "Continuous"},
+		{"applied_by", Character, "Nominal"},
+		{"prev_config_version_id", Character, "Nominal"}
+	}, rebuild);
+
+	SPCEnsureTable("CONFIG_AUDIT", {
+		{"event_id", Character, "Nominal"},
+		{"event_type", Character, "Nominal"},
+		{"actor", Character, "Nominal"},
+		{"ts", Numeric, "Continuous"},
+		{"config_id", Character, "Nominal"},
+		{"version_id", Character, "Nominal"},
+		{"diff_summary", Character, "Nominal"}
+	}, rebuild);
+
+	SPCEnsureTable("RULE_SETS", {
+		{"rule_set_id", Character, "Nominal"},
+		{"name", Character, "Nominal"},
+		{"description", Character, "Nominal"},
+		{"enabled_rules", Character, "Nominal"},
+		{"parameters", Character, "Nominal"},
+		{"created_by", Character, "Nominal"},
+		{"created_at", Numeric, "Continuous"},
+		{"version_id", Character, "Nominal"}
+	}, rebuild);
+
+	SPCEnsureTable("RULE_PARAMS", {
+		{"rule_set_id", Character, "Nominal"},
+		{"rule_code", Character, "Nominal"},
+		{"enabled", Numeric, "Ordinal"},
+		{"p1", Numeric, "Continuous"},
+		{"p2", Numeric, "Continuous"},
+		{"p3", Numeric, "Continuous"},
+		{"severity", Character, "Nominal"}
+	}, rebuild);
+
+	SPCEnsureTable("ALERTS", {
+		{"alert_id", Character, "Nominal"},
+		{"first_ts", Numeric, "Continuous"},
+		{"last_ts", Numeric, "Continuous"},
+		{"line", Character, "Nominal"},
+		{"machine", Character, "Nominal"},
+		{"variable", Character, "Nominal"},
+		{"chart_type", Character, "Nominal"},
+		{"rule_code", Character, "Nominal"},
+		{"level", Character, "Nominal"},
+		{"status", Character, "Nominal"},
+		{"message", Character, "Nominal"},
+		{"current_value", Numeric, "Continuous"},
+		{"cl", Numeric, "Continuous"},
+		{"ucl", Numeric, "Continuous"},
+		{"lcl", Numeric, "Continuous"},
+		{"dedup_key", Character, "Nominal"},
+		{"last_notified_at", Numeric, "Continuous"},
+		{"created_at", Numeric, "Continuous"},
+		{"updated_at", Numeric, "Continuous"}
+	}, rebuild);
+
+	SPCEnsureTable("DEDUP", {
+		{"dedup_key", Character, "Nominal"},
+		{"mute_minutes", Numeric, "Continuous"},
+		{"last_sent_at", Numeric, "Continuous"}
+	}, rebuild);
+
+	SPCEnsureTable("CASES", {
+		{"case_id", Character, "Nominal"},
+		{"alert_id", Character, "Nominal"},
+		{"owner", Character, "Nominal"},
+		{"sla_minutes_response", Numeric, "Continuous"},
+		{"sla_minutes_close", Numeric, "Continuous"},
+		{"ack_at", Numeric, "Continuous"},
+		{"ack_by", Character, "Nominal"},
+		{"action_type", Character, "Nominal"},
+		{"containment", Character, "Nominal"},
+		{"root_cause", Character, "Nominal"},
+		{"corrective_action", Character, "Nominal"},
+		{"verify_method", Character, "Nominal"},
+		{"verify_result", Character, "Nominal"},
+		{"close_at", Numeric, "Continuous"},
+		{"close_by", Character, "Nominal"},
+		{"attachments_ref", Character, "Nominal"},
+		{"recurrence_flag", Numeric, "Ordinal"}
+	}, rebuild);
+
+	SPCEnsureTable("STATUS", {
+		{"line", Character, "Nominal"},
+		{"machine", Character, "Nominal"},
+		{"status", Character, "Nominal"},
+		{"last_data_at", Numeric, "Continuous"},
+		{"last_eval_at", Numeric, "Continuous"},
+		{"active_alert_count", Numeric, "Continuous"},
+		{"top_alert_level", Character, "Nominal"}
+	}, rebuild);
+
+	SPCEnsureTable("KPI_DAILY", {
+		{"date", Numeric, "Continuous"},
+		{"line", Character, "Nominal"},
+		{"machine", Character, "Nominal"},
+		{"total_checks", Numeric, "Continuous"},
+		{"alerts_cnt", Numeric, "Continuous"},
+		{"red_minutes", Numeric, "Continuous"},
+		{"gray_minutes", Numeric, "Continuous"},
+		{"avg_response_min", Numeric, "Continuous"},
+		{"avg_close_min", Numeric, "Continuous"},
+		{"close_rate", Numeric, "Continuous"},
+		{"top_variable", Character, "Nominal"},
+		{"top_rule", Character, "Nominal"}
+	}, rebuild);
+
+	SPCEnsureTable("DB_CONN", {
+		{"conn_name", Character, "Nominal"},
+		{"odbc_dsn", Character, "Nominal"},
+		{"conn_string", Character, "Nominal"},
+		{"username", Character, "Nominal"},
+		{"password", Character, "Nominal"},
+		{"query_template", Character, "Nominal"},
+		{"incremental_mode", Character, "Nominal"},
+		{"watermark_value", Character, "Nominal"},
+		{"poll_seconds", Numeric, "Continuous"},
+		{"is_active", Numeric, "Ordinal"}
+	}, rebuild);
+);
+
+SPCSeedSampleData = Function({},
+	localPath = SPCDataPath("DB_CONN.jmp");
+	dt = Open(localPath, Private);
+	If(N Rows(dt) == 0,
+		dt << Add Rows(1);
+		Column(dt, "conn_name")[1] = "mysql_sample";
+		Column(dt, "odbc_dsn")[1] = "mysql_spc";
+		Column(dt, "conn_string")[1] = "Driver={MySQL ODBC 8.0 Driver};Server=localhost;Database=spc;";
+		Column(dt, "query_template")[1] = "SELECT ts, line, machine, variable, value, subgroup_id, subgroup_index FROM spc_measurements WHERE ts > '{watermark}'";
+		Column(dt, "incremental_mode")[1] = "TS";
+		Column(dt, "watermark_value")[1] = "1970-01-01 00:00:00";
+		Column(dt, "poll_seconds")[1] = 10;
+		Column(dt, "is_active")[1] = 1;
+	);
+	dt << Save(localPath);
+	Close(dt, No Save);
+);

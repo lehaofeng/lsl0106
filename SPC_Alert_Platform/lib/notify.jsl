@@ -1,0 +1,6 @@
+Names Default To Here(1);
+
+SPCSendNotification = Function({line, machine, variable, ruleCode, level},
+	// Placeholder: integrate with SMTP/IM.
+	Show("Notify: " || level || " " || line || " " || machine || " " || variable || " " || ruleCode);
+);

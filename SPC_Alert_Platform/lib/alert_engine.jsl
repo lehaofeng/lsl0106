@@ -1,0 +1,68 @@
+Names Default To Here(1);
+Include("dt_store.jsl");
+Include("notify.jsl");
+
+SPCBuildDedupKey = Function({line, machine, variable, ruleCode, chartType},
+	Return(line || "|" || machine || "|" || variable || "|" || ruleCode || "|" || chartType);
+);
+
+SPCRegisterAlert = Function({dt, violation, stats},
+	line = Column(dt, "line")[violation["index"]];
+	machine = Column(dt, "machine")[violation["index"]];
+	variable = Column(dt, "variable")[violation["index"]];
+	chartType = "IMR";
+	dedupKey = SPCBuildDedupKey(line, machine, variable, violation["rule"], chartType);
+	alertsPath = SPCDataPath("ALERTS.jmp");
+	dedupPath = SPCDataPath("DEDUP.jmp");
+	alerts = Open(alertsPath, Private);
+	dedup = Open(dedupPath, Private);
+
+	row = Loc(Column(dedup, "dedup_key"), dedupKey);
+	muteMinutes = 30;
+	If(N Items(row) > 0,
+		lastSent = Column(dedup, "last_sent_at")[row[1]];
+		muteMinutes = Column(dedup, "mute_minutes")[row[1]];
+		If((Now() - lastSent) * 1440 < muteMinutes,
+			Close(alerts, No Save);
+			Close(dedup, No Save);
+			Return();
+		);
+	);
+
+	alerts << Add Rows(1);
+	rowAlert = N Rows(alerts);
+	Column(alerts, "alert_id")[rowAlert] = Char(Today()) || "-" || Char(Tick());
+	Column(alerts, "first_ts")[rowAlert] = Now();
+	Column(alerts, "last_ts")[rowAlert] = Now();
+	Column(alerts, "line")[rowAlert] = line;
+	Column(alerts, "machine")[rowAlert] = machine;
+	Column(alerts, "variable")[rowAlert] = variable;
+	Column(alerts, "chart_type")[rowAlert] = chartType;
+	Column(alerts, "rule_code")[rowAlert] = violation["rule"];
+	Column(alerts, "level")[rowAlert] = violation["severity"];
+	Column(alerts, "status")[rowAlert] = "OPEN";
+	Column(alerts, "message")[rowAlert] = "Rule triggered: " || violation["rule"];
+	Column(alerts, "current_value")[rowAlert] = stats["values"][violation["index"]];
+	Column(alerts, "cl")[rowAlert] = stats["cl"];
+	Column(alerts, "ucl")[rowAlert] = stats["ucl"];
+	Column(alerts, "lcl")[rowAlert] = stats["lcl"];
+	Column(alerts, "dedup_key")[rowAlert] = dedupKey;
+	Column(alerts, "created_at")[rowAlert] = Now();
+	Column(alerts, "updated_at")[rowAlert] = Now();
+
+	If(N Items(row) == 0,
+		dedup << Add Rows(1);
+		rowDedup = N Rows(dedup);
+		Column(dedup, "dedup_key")[rowDedup] = dedupKey;
+		Column(dedup, "mute_minutes")[rowDedup] = muteMinutes;
+		Column(dedup, "last_sent_at")[rowDedup] = Now();
+	,
+		Column(dedup, "last_sent_at")[row[1]] = Now();
+	);
+
+	alerts << Save(alertsPath);
+	dedup << Save(dedupPath);
+	Close(alerts, No Save);
+	Close(dedup, No Save);
+	SPCSendNotification(line, machine, variable, violation["rule"], violation["severity"]);
+);

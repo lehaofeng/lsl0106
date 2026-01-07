@@ -1,0 +1,13 @@
+Names Default To Here(1);
+Include("spc_charts.jsl");
+Include("dt_store.jsl");
+
+SPCShowMachineDetail = Function({machineName=""},
+	dt = Open(SPCDataPath("STATUS.jmp"), Private);
+	New Window("机台详情 - " || machineName,
+		V List Box(
+			Text Box("动态控制图示意"),
+			Table Box(dt)
+		)
+	);
+);

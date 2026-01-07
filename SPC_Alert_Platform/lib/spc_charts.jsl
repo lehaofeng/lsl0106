@@ -1,0 +1,47 @@
+Names Default To Here(1);
+
+SPCComputeChartStats = Function({dt, chartType, subgroupSize},
+	stats = {};
+	values = Column(dt, "value") << Get Values;
+	If(chartType == "IMR",
+		meanVal = Mean(values);
+		mr = Abs(values[2::N Items(values)] - values[1::N Items(values)-1]);
+		mrBar = Mean(mr);
+		d2 = 1.128;
+		sigma = mrBar / d2;
+		ucl = meanVal + 3 * sigma;
+		lcl = meanVal - 3 * sigma;
+		stats["cl"] = meanVal;
+		stats["ucl"] = ucl;
+		stats["lcl"] = lcl;
+		stats["sigma"] = sigma;
+		stats["values"] = values;
+	,
+		stats["cl"] = Mean(values);
+		stats["ucl"] = stats["cl"];
+		stats["lcl"] = stats["cl"];
+		stats["sigma"] = 0;
+		stats["values"] = values;
+	);
+	Return(stats);
+);
+
+SPCBuildChartWindow = Function({dt, stats, specLimits, showRules=1},
+	win = New Window("SPC Chart",
+		Outline Box("Control Chart",
+			Control Chart( Y( Column(dt, "value") ),
+				Show Control Limits(1),
+				Center Line(stats["cl"]),
+				Upper Control Limit(stats["ucl"]),
+				Lower Control Limit(stats["lcl"])
+			)
+		)
+	);
+	Return(win);
+);
+
+SPCUpdateChartWindow = Function({windowRef, newDt, newStats},
+	If(Is Missing(windowRef), Return());
+	windowRef << Close Window;
+	SPCBuildChartWindow(newDt, newStats, {});
+);

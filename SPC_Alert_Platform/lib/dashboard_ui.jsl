@@ -1,0 +1,12 @@
+Names Default To Here(1);
+Include("dt_store.jsl");
+
+SPCShowDashboard = Function({},
+	statusDt = Open(SPCDataPath("STATUS.jmp"), Private);
+	New Window("SPC 看板",
+		V List Box(
+			Text Box("机台状态"),
+			Table Box(statusDt)
+		)
+	);
+);

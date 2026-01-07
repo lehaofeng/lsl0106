@@ -1,0 +1,18 @@
+Names Default To Here(1);
+Include("monitor_engine.jsl");
+
+SPC_TIMER = .;
+SPC_RUNNING = 0;
+
+SPCStartScheduler = Function({},
+	If(SPC_RUNNING, Return());
+	SPC_RUNNING = 1;
+	SPC_TIMER = New Timer(10, "SPCMonitorOnce();");
+	SPC_TIMER << Start;
+);
+
+SPCStopScheduler = Function({},
+	If(Is Missing(SPC_TIMER), Return());
+	SPC_TIMER << Stop;
+	SPC_RUNNING = 0;
+);

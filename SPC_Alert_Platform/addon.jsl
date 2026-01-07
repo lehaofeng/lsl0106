@@ -1,0 +1,62 @@
+Names Default To Here(1);
+
+Include("lib/dt_store.jsl");
+Include("lib/rbac.jsl");
+Include("lib/config_repo.jsl");
+Include("lib/approval.jsl");
+Include("lib/dashboard_ui.jsl");
+Include("lib/machine_ui.jsl");
+Include("lib/config_ui.jsl");
+Include("lib/approval_ui.jsl");
+Include("lib/report_ui.jsl");
+Include("lib/monitor_engine.jsl");
+Include("lib/db.jsl");
+
+SPCInitPlatform = Function({},
+	SPCEnsureAllTables();
+	SPCSeedSampleData();
+	SPCShowDashboard();
+);
+
+SPCStartMonitor = Function({},
+	SPCStartScheduler();
+);
+
+SPCStopMonitor = Function({},
+	SPCStopScheduler();
+);
+
+SPCOpenConfig = Function({},
+	SPCShowConfigCenter();
+);
+
+SPCOpenApproval = Function({},
+	SPCShowApprovalCenter();
+);
+
+SPCOpenAlerts = Function({},
+	SPCShowCaseCenter();
+);
+
+SPCOpenReports = Function({},
+	SPCShowReportCenter();
+);
+
+SPCRebuildLocalStore = Function({},
+	SPCEnsureAllTables(1);
+);
+
+SPCRegisterMenu = Function({},
+	m = New Menu("SPC 预警平台",
+		"打开看板", SPCShowDashboard(),
+		"启动监控", SPCStartScheduler(),
+		"停止监控", SPCStopScheduler(),
+		"配置中心", SPCShowConfigCenter(),
+		"审批中心", SPCShowApprovalCenter(),
+		"告警&闭环中心", SPCShowCaseCenter(),
+		"汇总报表", SPCShowReportCenter(),
+		"初始化/重建本地库", SPCRebuildLocalStore()
+	);
+);
+
+SPCRegisterMenu();

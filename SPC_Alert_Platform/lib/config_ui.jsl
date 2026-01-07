@@ -1,0 +1,17 @@
+Names Default To Here(1);
+Include("dt_store.jsl");
+Include("rbac.jsl");
+
+SPCShowConfigCenter = Function({},
+	SPCRequireRole("VIEWER");
+	active = Open(SPCDataPath("CONFIG_ACTIVE.jmp"), Private);
+	draft = Open(SPCDataPath("CONFIG_DRAFT.jmp"), Private);
+	New Window("配置中心",
+		V List Box(
+			Text Box("生效配置"),
+			Table Box(active),
+			Text Box("草稿"),
+			Table Box(draft)
+		)
+	);
+);
