@@ -1,0 +1,12 @@
+Names Default To Here( 1 );
+
+Platform:Namespace( "SPC" );
+
+SPC:OpenMachineWindow := Function( {line, machine},
+	New Window( "机台详情",
+		V List Box(
+			Text Box( "Line: " || line || " Machine: " || machine ),
+			Text Box( "TODO: Dynamic control chart and alert list." )
+		)
+	);
+);

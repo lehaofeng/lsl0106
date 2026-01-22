@@ -1,0 +1,15 @@
+Names Default To Here( 1 );
+
+Platform:Namespace( "SPC" );
+
+SPC:CreateAlert := Function( {alertInfo},
+	Local( {alerts = Open( SPC:GetDataDir() || "ALERTS.jmp", Invisible )} );
+	// TODO: Insert alert row and update dedup.
+	Close( alerts, No Save );
+);
+
+SPC:UpdateDedup := Function( {dedupKey},
+	Local( {dedup = Open( SPC:GetDataDir() || "DEDUP.jmp", Invisible )} );
+	// TODO: Update last_sent_at for dedupKey.
+	Close( dedup, No Save );
+);

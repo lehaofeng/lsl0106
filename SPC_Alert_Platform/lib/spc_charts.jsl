@@ -1,0 +1,23 @@
+Names Default To Here( 1 );
+
+Platform:Namespace( "SPC" );
+
+SPC:ComputeChartStats := Function( {dt, chartType, subgroupSize},
+	Local( {stats = Associative Array()} );
+	stats["chart_type"] = chartType;
+	stats["subgroup_size"] = subgroupSize;
+	// TODO: Implement IMR/Xbar-R/Xbar-S/MR/P/NP/C/U with variable n support.
+	stats;
+);
+
+SPC:BuildChartWindow := Function( {dt, stats, specLimits, showRules},
+	Local( {win} );
+	win = New Window( "SPC Chart" );
+	// TODO: Draw control chart with spec limits and rule annotations.
+	win;
+);
+
+SPC:UpdateChartWindow := Function( {windowRef, newDt, newStats},
+	// TODO: Update existing window with new data and stats.
+	windowRef;
+);

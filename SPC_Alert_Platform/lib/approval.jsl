@@ -1,0 +1,22 @@
+Names Default To Here( 1 );
+
+Include( "config_repo.jsl" );
+Include( "rbac.jsl" );
+
+Platform:Namespace( "SPC" );
+
+SPC:SubmitForApproval := Function( {configId},
+	If( SPC:HasPermission( "CONFIG_EDIT" ),
+		SPC:SubmitDraft( configId );
+	,
+		Throw( "Permission denied." );
+	);
+);
+
+SPC:ApproveConfig := Function( {configId},
+	If( SPC:HasPermission( "CONFIG_APPROVE" ),
+		SPC:ApproveDraft( configId, SPC:CurrentUser() );
+	,
+		Throw( "Permission denied." );
+	);
+);

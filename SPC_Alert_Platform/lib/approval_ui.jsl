@@ -1,0 +1,11 @@
+Names Default To Here( 1 );
+
+Platform:Namespace( "SPC" );
+
+SPC:OpenApprovalWindow := Function( {},
+	New Window( "审批中心",
+		V List Box(
+			Text Box( "TODO: Approval list and diff view." )
+		)
+	);
+);

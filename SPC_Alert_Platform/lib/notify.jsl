@@ -1,0 +1,7 @@
+Names Default To Here( 1 );
+
+Platform:Namespace( "SPC" );
+
+SPC:SendEmail := Function( {toList, subject, body},
+	// TODO: Configure SMTP (QQ Mail) and send notification.
+);

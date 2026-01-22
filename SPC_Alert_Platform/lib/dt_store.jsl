@@ -1,0 +1,112 @@
+Names Default To Here( 1 );
+
+Platform:Namespace( "SPC" );
+
+SPC:GetDataDir := Function( {},
+	Local( {baseDir = Get Directory( "current" )} );
+	baseDir || "SPC_Alert_Platform/data/";
+);
+
+SPC:EnsurePlatformTables := Function( {},
+	SPC:EnsureTable( "ORG", {
+		"plant", "line", "machine", "machine_display_order", "is_active"
+	} );
+	SPC:EnsureTable( "USERS", {
+		"username", "display_name", "email", "role", "line_scope"
+	} );
+	SPC:EnsureTable( "CONFIG_DRAFT", {
+		"config_id", "line", "machine", "variable", "enable_monitoring",
+		"chart_type", "sampling_type", "subgroup_size",
+		"usl", "lsl", "target", "control_limit_mode",
+		"cl", "ucl", "lcl", "baseline_days", "baseline_points",
+		"rule_set_id", "severity_map", "notification_profile_id",
+		"effective_from", "created_by", "created_at", "status",
+		"submit_at", "approve_at", "approve_by", "change_reason",
+		"prev_config_version_id"
+	} );
+	SPC:EnsureTable( "CONFIG_ACTIVE", {
+		"config_id", "version_id", "line", "machine", "variable",
+		"enable_monitoring", "chart_type", "sampling_type", "subgroup_size",
+		"usl", "lsl", "target", "control_limit_mode",
+		"cl", "ucl", "lcl", "baseline_days", "baseline_points",
+		"rule_set_id", "severity_map", "notification_profile_id",
+		"effective_from", "created_by", "created_at", "status",
+		"submit_at", "approve_at", "approve_by", "change_reason",
+		"prev_config_version_id", "applied_at", "applied_by"
+	} );
+	SPC:EnsureTable( "CONFIG_AUDIT", {
+		"event_id", "event_type", "actor", "ts", "config_id", "version_id", "diff_summary"
+	} );
+	SPC:EnsureTable( "RULE_SETS", {
+		"rule_set_id", "name", "description", "enabled_rules", "parameters",
+		"created_by", "created_at", "version_id"
+	} );
+	SPC:EnsureTable( "RULE_PARAMS", {
+		"rule_set_id", "rule_code", "enabled", "p1", "p2", "p3", "severity"
+	} );
+	SPC:EnsureTable( "ALERTS", {
+		"alert_id", "first_ts", "last_ts", "line", "machine", "variable",
+		"chart_type", "rule_code", "level", "status", "message",
+		"current_value", "cl", "ucl", "lcl", "dedup_key",
+		"last_notified_at", "created_at", "updated_at"
+	} );
+	SPC:EnsureTable( "DEDUP", {
+		"dedup_key", "mute_minutes", "last_sent_at"
+	} );
+	SPC:EnsureTable( "CASES", {
+		"case_id", "alert_id", "owner", "sla_minutes_response", "sla_minutes_close",
+		"ack_at", "ack_by", "action_type", "containment", "root_cause",
+		"corrective_action", "verify_method", "verify_result", "close_at",
+		"close_by", "attachments_ref", "recurrence_flag"
+	} );
+	SPC:EnsureTable( "STATUS", {
+		"line", "machine", "status", "last_data_at", "last_eval_at",
+		"active_alert_count", "top_alert_level"
+	} );
+	SPC:EnsureTable( "KPI_DAILY", {
+		"date", "line", "machine", "total_checks", "alerts_cnt",
+		"red_minutes", "gray_minutes", "avg_response_min", "avg_close_min",
+		"close_rate", "top_variable", "top_rule"
+	} );
+	SPC:EnsureTable( "DB_CONN", {
+		"conn_name", "odbc_dsn", "conn_string", "username", "password",
+		"query_template", "incremental_mode", "watermark_value",
+		"poll_seconds", "is_active"
+	} );
+);
+
+SPC:EnsureTable := Function( {tableName, columns},
+	Local( {filePath = SPC:GetDataDir() || tableName || ".jmp", dt, missingCols, colName} );
+	If( File Exists( filePath ),
+		dt = Open( filePath, Invisible );
+	,
+		dt = New Table( tableName );
+		For Each( colName = columns,
+			dt << New Column( colName, Character );
+		);
+		dt << Save( filePath );
+	);
+	missingCols = {};
+	For Each( colName = columns,
+		If( Is Missing( dt:Column( colName ) ),
+			Insert Into( missingCols, colName );
+		);
+	);
+	If( N Items( missingCols ) > 0,
+		For Each( colName = missingCols,
+			dt << New Column( colName, Character );
+		);
+		dt << Save( filePath );
+	);
+	Close( dt, No Save );
+);
+
+SPC:RebuildPlatformTables := Function( {},
+	Local( {dataDir = SPC:GetDataDir()} );
+	If( File Exists( dataDir ),
+		For Each( file = Files In Directory( dataDir, "*.jmp" ),
+			Delete File( dataDir || file );
+		);
+	);
+	SPC:EnsurePlatformTables();
+);

@@ -1,0 +1,28 @@
+Names Default To Here( 1 );
+
+Include( "monitor_engine.jsl" );
+
+Platform:Namespace( "SPC" );
+
+SPC:SchedulerTimer = .;
+SPC:SchedulerRunning = 0;
+
+SPC:StartScheduler := Function( {},
+	If( SPC:SchedulerRunning == 1,
+		Return();
+	);
+	SPC:SchedulerTimer = New Timer(
+		Interval( 10 ),
+		<<Repeat( 1 ),
+		<<Handler( SPC:RunMonitorCycle() )
+	);
+	SPC:SchedulerRunning = 1;
+);
+
+SPC:StopScheduler := Function( {},
+	If( Is Missing( SPC:SchedulerTimer ),
+		Return();
+	);
+	SPC:SchedulerTimer << Stop();
+	SPC:SchedulerRunning = 0;
+);

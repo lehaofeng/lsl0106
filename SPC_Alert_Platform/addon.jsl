@@ -1,0 +1,85 @@
+Names Default To Here( 1 );
+
+Include( "lib/dt_store.jsl" );
+Include( "lib/rbac.jsl" );
+Include( "lib/scheduler.jsl" );
+Include( "lib/dashboard_ui.jsl" );
+Include( "lib/config_ui.jsl" );
+Include( "lib/approval_ui.jsl" );
+Include( "lib/report_ui.jsl" );
+Include( "lib/case_mgmt.jsl" );
+Include( "lib/monitor_engine.jsl" );
+
+Platform:Namespace( "SPC" );
+
+SPC:Init := Function( {},
+	SPC:EnsurePlatformTables();
+	SPC:LoadUsersReflectCurrentUser();
+);
+
+SPC:OpenDashboard := Function( {},
+	SPC:EnsurePlatformTables();
+	SPC:OpenDashboardWindow();
+);
+
+SPC:OpenConfigCenter := Function( {},
+	SPC:EnsurePlatformTables();
+	SPC:OpenConfigWindow();
+);
+
+SPC:OpenApprovalCenter := Function( {},
+	SPC:EnsurePlatformTables();
+	SPC:OpenApprovalWindow();
+);
+
+SPC:OpenCaseCenter := Function( {},
+	SPC:EnsurePlatformTables();
+	SPC:OpenCaseWindow();
+);
+
+SPC:OpenReportCenter := Function( {},
+	SPC:EnsurePlatformTables();
+	SPC:OpenReportWindow();
+);
+
+SPC:StartMonitoring := Function( {},
+	If( SPC:HasPermission( "MONITOR_START" ),
+		SPC:StartScheduler();
+	,
+		Throw( "Permission denied." );
+	);
+);
+
+SPC:StopMonitoring := Function( {},
+	If( SPC:HasPermission( "MONITOR_STOP" ),
+		SPC:StopScheduler();
+	,
+		Throw( "Permission denied." );
+	);
+);
+
+SPC:RebuildLocalStore := Function( {},
+	If( SPC:HasPermission( "ADMIN" ),
+		SPC:RebuildPlatformTables();
+	,
+		Throw( "Permission denied." );
+	);
+);
+
+SPC:RegisterMenu := Function( {},
+	If( Is Missing( Menu( "SPC Alert Platform" ) ),
+		New Menu( "SPC Alert Platform",
+			Menu Item( "打开看板", SPC:OpenDashboard() ),
+			Menu Item( "启动监控", SPC:StartMonitoring() ),
+			Menu Item( "停止监控", SPC:StopMonitoring() ),
+			Menu Item( "配置中心", SPC:OpenConfigCenter() ),
+			Menu Item( "审批中心", SPC:OpenApprovalCenter() ),
+			Menu Item( "告警&闭环中心", SPC:OpenCaseCenter() ),
+			Menu Item( "汇总报表", SPC:OpenReportCenter() ),
+			Menu Item( "初始化/重建本地库", SPC:RebuildLocalStore() )
+		);
+	);
+);
+
+SPC:Init();
+SPC:RegisterMenu();

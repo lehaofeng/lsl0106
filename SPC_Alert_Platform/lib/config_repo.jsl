@@ -1,0 +1,33 @@
+Names Default To Here( 1 );
+
+Platform:Namespace( "SPC" );
+
+SPC:SaveDraft := Function( {draftRow},
+	Local( {dt = Open( SPC:GetDataDir() || "CONFIG_DRAFT.jmp", Invisible )} );
+	// TODO: Map draftRow fields into table.
+	Close( dt, No Save );
+);
+
+SPC:SubmitDraft := Function( {configId},
+	Local( {dt = Open( SPC:GetDataDir() || "CONFIG_DRAFT.jmp", Invisible )} );
+	// TODO: Update status to SUBMITTED and set submit_at.
+	Close( dt, No Save );
+);
+
+SPC:ApproveDraft := Function( {configId, approver},
+	Local( {dt = Open( SPC:GetDataDir() || "CONFIG_DRAFT.jmp", Invisible )} );
+	// TODO: Update status to APPROVED and set approve_at/approve_by.
+	Close( dt, No Save );
+);
+
+SPC:ApplyConfig := Function( {configId, actor},
+	Local( {draft = Open( SPC:GetDataDir() || "CONFIG_DRAFT.jmp", Invisible ),
+		active = Open( SPC:GetDataDir() || "CONFIG_ACTIVE.jmp", Invisible )} );
+	// TODO: Create new version row in CONFIG_ACTIVE and expire previous versions.
+	Close( draft, No Save );
+	Close( active, No Save );
+);
+
+SPC:RollbackConfig := Function( {versionId, actor},
+	// TODO: Copy historical version into active and log audit event.
+);
