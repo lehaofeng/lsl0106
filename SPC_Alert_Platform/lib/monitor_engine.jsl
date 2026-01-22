@@ -1,0 +1,14 @@
+Names Default To Here( 1 );
+
+Include( "db.jsl" );
+Include( "spc_charts.jsl" );
+Include( "spc_rules.jsl" );
+Include( "alert_engine.jsl" );
+
+Platform:Namespace( "SPC" );
+
+SPC:RunMonitorCycle := Function( {},
+	Local( {configs = Open( SPC:GetDataDir() || "CONFIG_ACTIVE.jmp", Invisible )} );
+	// TODO: For each active config, fetch data, compute stats, evaluate rules, update alerts/status.
+	Close( configs, No Save );
+);

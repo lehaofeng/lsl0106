@@ -1,0 +1,18 @@
+Names Default To Here( 1 );
+
+Platform:Namespace( "SPC" );
+
+SPC:EvaluateRules := Function( {dt, stats, ruleSetId},
+	Local( {results = {}, rulesDt} );
+	rulesDt = Open( SPC:GetDataDir() || "RULE_PARAMS.jmp", Invisible );
+	// TODO: Evaluate Nelson and Western Electric rules based on rule params.
+	Close( rulesDt, No Save );
+	results;
+);
+
+SPC:RuleMessage := Function( {ruleCode},
+	Local( {msg = ""} );
+	If( ruleCode == "N1", msg = "1 point beyond 3σ." );
+	If( ruleCode == "N2", msg = "9 points on one side of centerline." );
+	msg;
+);

@@ -1,0 +1,16 @@
+Names Default To Here( 1 );
+
+Platform:Namespace( "SPC" );
+
+SPC:OpenDashboardWindow := Function( {},
+	New Window( "SPC 看板",
+		V List Box(
+			Text Box( "TODO: Dashboard with line/machine status dots." ),
+			Button Box( "刷新", SPC:RefreshDashboard() )
+		)
+	);
+);
+
+SPC:RefreshDashboard := Function( {},
+	// TODO: Refresh status table and update UI.
+);

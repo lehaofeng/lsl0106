@@ -1,0 +1,31 @@
+Names Default To Here( 1 );
+
+// Demo script: create sample MySQL table and insert data via ODBC.
+// Update the DSN and credentials before running.
+
+Local( {dsn = "mysql_spc", user = "root", pwd = "password"} );
+
+sqlCreate = "CREATE TABLE IF NOT EXISTS spc_raw (\
+	ts DATETIME,\
+	plant VARCHAR(32),\
+	area VARCHAR(32),\
+	line VARCHAR(32),\
+	machine VARCHAR(32),\
+	product VARCHAR(32),\
+	process VARCHAR(32),\
+	variable VARCHAR(64),\
+	value DOUBLE,\
+	subgroup_id VARCHAR(32),\
+	subgroup_index INT,\
+	lot VARCHAR(32),\
+	wo VARCHAR(32),\
+	shift VARCHAR(16)\
+);");
+
+sqlInsert = "INSERT INTO spc_raw (ts, plant, area, line, machine, product, process, variable, value, subgroup_id, subgroup_index, lot, wo, shift) VALUES\
+('2024-01-01 08:00:00', 'P1', 'A1', 'L1', 'M1', 'ProdA', 'Proc1', 'Thickness', 10.5, 'SG1', 1, 'LOT1', 'WO1', 'D'),\
+('2024-01-01 08:01:00', 'P1', 'A1', 'L1', 'M1', 'ProdA', 'Proc1', 'Thickness', 10.7, 'SG1', 2, 'LOT1', 'WO1', 'D');";
+
+// TODO: Replace with Open Database and Execute SQL for your environment.
+Show( sqlCreate );
+Show( sqlInsert );

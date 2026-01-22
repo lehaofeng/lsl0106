@@ -1,0 +1,74 @@
+Names Default To Here( 1 );
+
+Include( "dt_store.jsl" );
+
+Platform:Namespace( "SPC" );
+
+SPC:CurrentUser := Function( {},
+	Local( {user = Get Environment Variable( "USERNAME" )} );
+	If( Is Missing( user ) | user == "",
+		user = "UNKNOWN";
+	);
+	user;
+);
+
+SPC:LoadUsersReflectCurrentUser := Function( {},
+	Local( {filePath = SPC:GetDataDir() || "USERS.jmp", dt} );
+	If( File Exists( filePath ),
+		dt = Open( filePath, Invisible );
+	,
+		dt = New Table( "USERS" );
+		dt << New Column( "username", Character );
+		dt << New Column( "display_name", Character );
+		dt << New Column( "email", Character );
+		dt << New Column( "role", Character );
+		dt << New Column( "line_scope", Character );
+	);
+	If( N Rows( dt ) == 0,
+		dt << Add Rows( 1 );
+		dt:username[1] = SPC:CurrentUser();
+		dt:display_name[1] = SPC:CurrentUser();
+		dt:role[1] = "ADMIN";
+		dt << Save( filePath );
+	);
+	Close( dt, No Save );
+);
+
+SPC:GetUserRole := Function( {username},
+	Local( {dt, role = "VIEWER"} );
+	dt = Open( SPC:GetDataDir() || "USERS.jmp", Invisible );
+	If( N Rows( dt ) > 0,
+		Local( {idx = Loc( dt:username, username )} );
+		If( N Items( idx ) > 0,
+			role = dt:role[idx[1]];
+		);
+	);
+	Close( dt, No Save );
+	role;
+);
+
+SPC:HasPermission := Function( {action},
+	Local( {role = SPC:GetUserRole( SPC:CurrentUser() )} );
+	If( role == "ADMIN",
+		Return( 1 );
+	);
+	If( action == "VIEW",
+		Return( 1 );
+	);
+	If( action == "CONFIG_EDIT" & (role == "CONFIG_EDITOR" | role == "APPROVER"),
+		Return( 1 );
+	);
+	If( action == "CONFIG_APPROVE" & role == "APPROVER",
+		Return( 1 );
+	);
+	If( action == "ACK" & (role == "ENGINEER" | role == "APPROVER"),
+		Return( 1 );
+	);
+	If( action == "MONITOR_START" & (role == "ADMIN" | role == "APPROVER"),
+		Return( 1 );
+	);
+	If( action == "MONITOR_STOP" & (role == "ADMIN" | role == "APPROVER"),
+		Return( 1 );
+	);
+	0;
+);

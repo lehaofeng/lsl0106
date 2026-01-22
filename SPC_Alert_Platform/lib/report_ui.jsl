@@ -1,0 +1,11 @@
+Names Default To Here( 1 );
+
+Platform:Namespace( "SPC" );
+
+SPC:OpenReportWindow := Function( {},
+	New Window( "汇总报表",
+		V List Box(
+			Text Box( "TODO: KPI summaries and trends." )
+		)
+	);
+);

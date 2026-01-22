@@ -1,0 +1,32 @@
+Names Default To Here( 1 );
+
+Platform:Namespace( "SPC" );
+
+SPC:FetchIncremental := Function( {connName},
+	Local( {dbTable, connRow, queryTemplate, watermark, result = Empty()} );
+	dbTable = Open( SPC:GetDataDir() || "DB_CONN.jmp", Invisible );
+	connRow = Loc( dbTable:conn_name, connName );
+	If( N Items( connRow ) == 0,
+		Close( dbTable, No Save );
+		Return( result );
+	);
+	queryTemplate = dbTable:query_template[connRow[1]];
+	watermark = dbTable:watermark_value[connRow[1]];
+	If( Is Missing( watermark ) | watermark == "",
+		watermark = "0";
+	);
+	result = SPC:ExecuteIncrementalQuery( queryTemplate, watermark );
+	If( N Rows( result ) > 0,
+		dbTable:watermark_value[connRow[1]] = Char( Max( result:ts ) );
+		dbTable << Save( SPC:GetDataDir() || "DB_CONN.jmp" );
+	);
+	Close( dbTable, No Save );
+	result;
+);
+
+SPC:ExecuteIncrementalQuery := Function( {queryTemplate, watermark},
+	Local( {sql = Substitute( queryTemplate, "${WATERMARK}", watermark ), dt} );
+	dt = New Table( "INCR" );
+	// TODO: Replace with real ODBC execution via Open Database/Execute SQL.
+	dt;
+);
