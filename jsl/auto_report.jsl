@@ -1,0 +1,120 @@
+Names Default To Here( 1 );
+
+/*
+  自动报告主流程：
+  1) 加载数据
+  2) 按 fai_id 计算统计量（Mean/Std/Cpk/Ppk）
+  3) 导出每个 fai_id 图表
+  4) 导出 metrics.csv
+  5) 调用 Python 更新 PPT
+*/
+
+// ====== 参数区（请按实际路径修改） ======
+data_path = "$PROJECT/data/source_data.csv";
+ppt_template = "$PROJECT/templates/report_template.pptx";
+output_dir = "$PROJECT/output";
+charts_dir = output_dir || "/charts";
+metrics_csv = output_dir || "/metrics.csv";
+python_script = "$PROJECT/python/ppt_updater.py";
+final_ppt = output_dir || "/final_report.pptx";
+python_bin = "python3";
+
+Create Directory( output_dir );
+Create Directory( charts_dir );
+
+// ====== 读取数据 ======
+dt = Open(
+	data_path,
+	columns(
+		New Column( "fai_id", Character ),
+		New Column( "part_no", Character ),
+		New Column( "measure_value", Numeric, Continuous ),
+		New Column( "lsl", Numeric, Continuous ),
+		New Column( "usl", Numeric, Continuous )
+	)
+);
+
+fai_vals = Associative Array( dt:fai_id ) << Get Keys;
+
+// 结果表
+metrics_dt = New Table( "metrics",
+	Add Rows( 0 ),
+	New Column( "fai_id", Character ),
+	New Column( "part_no", Character ),
+	New Column( "n", Numeric, Continuous ),
+	New Column( "mean", Numeric, Continuous ),
+	New Column( "std", Numeric, Continuous ),
+	New Column( "cpk", Numeric, Continuous ),
+	New Column( "ppk", Numeric, Continuous )
+);
+
+For Each( {fai}, fai_vals,
+	row_idx = dt << Get Rows Where( :fai_id == fai );
+	If( N Items( row_idx ) == 0, Continue() );
+
+	part_no_val = Char( Column( dt, "part_no" )[row_idx[1]] );
+	lsl_val = Num( Column( dt, "lsl" )[row_idx[1]] );
+	usl_val = Num( Column( dt, "usl" )[row_idx[1]] );
+
+	sub_vals = Column( dt, "measure_value" )[row_idx];
+	n = N Items( sub_vals );
+	mean_v = Col Mean( sub_vals );
+	std_v = Col Std Dev( sub_vals );
+
+	// 简化 Cpk/Ppk 计算（可替换为 Process Capability 平台输出）	cpu = (usl_val - mean_v) / (3 * std_v);
+	cpl = (mean_v - lsl_val) / (3 * std_v);
+	cpk_v = Min( cpu, cpl );
+
+	ppu = (usl_val - mean_v) / (3 * std_v);
+	ppl = (mean_v - lsl_val) / (3 * std_v);
+	ppk_v = Min( ppu, ppl );
+
+	metrics_dt << Add Rows( 1 );
+	last_row = N Rows( metrics_dt );
+	Column( metrics_dt, "fai_id" )[last_row] = fai;
+	Column( metrics_dt, "part_no" )[last_row] = part_no_val;
+	Column( metrics_dt, "n" )[last_row] = n;
+	Column( metrics_dt, "mean" )[last_row] = mean_v;
+	Column( metrics_dt, "std" )[last_row] = std_v;
+	Column( metrics_dt, "cpk" )[last_row] = cpk_v;
+	Column( metrics_dt, "ppk" )[last_row] = ppk_v;
+
+	// 生成并导出图表（按 fai_id）
+	gb = dt << Graph Builder(
+		Size( 900, 500 ),
+		Where( :fai_id == fai ),
+		Variables( X( :measure_value ) ),
+		Elements( Histogram( X, Legend( 5 ) ) )
+	);
+
+	img_name = Substitute( fai, " ", "_" ) || ".png";
+	img_path = charts_dir || "/" || img_name;
+	gb << Save Picture( img_path, "png" );
+	gb << Close Window;
+);
+
+Save( metrics_dt, metrics_csv );
+
+// ====== 调用 Python 更新 PPT ======
+cmd = python_bin || " \"" || python_script || "\"" ||
+      " --template \"" || ppt_template || "\"" ||
+      " --metrics \"" || metrics_csv || "\"" ||
+      " --charts \"" || charts_dir || "\"" ||
+      " --output \"" || final_ppt || "\"";
+
+Show( "Running: " || cmd );
+
+rp = Run Program(
+	Executable( python_bin ),
+	Options(
+		"\"" || python_script || "\"",
+		"--template", ppt_template,
+		"--metrics", metrics_csv,
+		"--charts", charts_dir,
+		"--output", final_ppt
+	),
+	Read Function( "text" )
+);
+
+Show( rp );
+Show( "Done. Final PPT: " || final_ppt );

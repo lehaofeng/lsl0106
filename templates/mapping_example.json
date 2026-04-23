@@ -1,0 +1,16 @@
+{
+  "description": "可选扩展映射文件示例（当前 python 脚本默认使用占位符规则，不强依赖本文件）",
+  "slide_keys": [
+    "FAI 1",
+    "FAI 2"
+  ],
+  "placeholders": {
+    "{{CPK}}": "cpk",
+    "{{PPK}}": "ppk",
+    "{{MEAN}}": "mean",
+    "{{STD}}": "std",
+    "{{N}}": "n",
+    "{{PART_NO}}": "part_no"
+  },
+  "chart_file_rule": "{FAI_ID_WITH_UNDERSCORE}.png"
+}
